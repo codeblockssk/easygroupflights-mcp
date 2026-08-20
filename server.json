@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.easygroupflights/easygroupflights",
+  "title": "easygroupflights",
+  "description": "Group flight quotes for parties of 10 or more. Group fares are negotiated directly with airlines and are not sold through public booking engines, so this submits a structured enquiry to a human specialist rather than returning a price. Smaller parties get live bookable fares.",
+  "version": "1.0.0",
+  "websiteUrl": "https://easygroupflights.com",
+  "repository": {
+    "url": "https://github.com/codeblockssk/easygroupflights-mcp",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://easygroupflights.com/apple-touch-icon.png",
+      "mimeType": "image/png",
+      "sizes": ["180x180"]
+    },
+    {
+      "src": "https://easygroupflights.com/favicon.png",
+      "mimeType": "image/png",
+      "sizes": ["64x64"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.easygroupflights.com/mcp"
+    }
+  ]
+}
