@@ -1,0 +1,5 @@
+node_modules
+# local secrets for `wrangler dev`
+.dev.vars
+# miniflare's local state — scratch, rebuilt on every run
+.wrangler/

@@ -1,0 +1,18 @@
+{
+  "name": "easygroupflights-mcp",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP server for easygroupflights.com — group flight quotes for 10+ passengers",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260819.1",
+    "typescript": "~6.0.2",
+    "wrangler": "^4.124.0"
+  }
+}

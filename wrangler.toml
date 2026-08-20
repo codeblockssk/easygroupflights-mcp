@@ -1,0 +1,20 @@
+name = "easygroupflights-mcp"
+main = "src/index.ts"
+compatibility_date = "2026-08-19"
+workers_dev = true
+
+# Public, non-secret configuration. Three secrets are set with
+#   wrangler secret put AUTOPILOT_URL
+#   wrangler secret put AUTOPILOT_API_KEY
+#   wrangler secret put PELIKAN_MCP_URL
+# The intake URL is a secret rather than a var only because this repo is public;
+# it is infrastructure, not a credential.
+[vars]
+SITE_URL = "https://easygroupflights.com"
+GROUP_MIN_PASSENGERS = "10"
+# Currency the fare service quotes in; follows whichever server PELIKAN_MCP_URL points at.
+FARE_CURRENCY = "EUR"
+
+[[routes]]
+pattern = "mcp.easygroupflights.com"
+custom_domain = true
