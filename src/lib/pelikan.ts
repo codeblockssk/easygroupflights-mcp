@@ -5,7 +5,7 @@ import type { Env } from '../types.ts'
 import { ToolError } from '../types.ts'
 
 const PROTOCOL_VERSION = '2025-06-18'
-const CLIENT_INFO = { name: 'easygroupflights-mcp', version: '1.0.0' }
+const CLIENT_INFO = { name: 'easygroupflights-mcp', version: '1.0.1' }
 
 /**
  * Streamable HTTP allows either a plain JSON body or an SSE stream carrying the

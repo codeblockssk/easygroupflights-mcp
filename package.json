@@ -1,7 +1,7 @@
 {
   "name": "easygroupflights-mcp",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "MCP server for easygroupflights.com — group flight quotes for 10+ passengers",
   "scripts": {

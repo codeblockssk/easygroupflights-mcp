@@ -7,7 +7,7 @@
 import type { Env, Tool } from '../types.ts'
 import { ToolError } from '../types.ts'
 
-const SERVER_INFO = { name: 'easygroupflights', version: '1.0.0' }
+const SERVER_INFO = { name: 'easygroupflights', version: '1.0.1' }
 
 // Newest first. We answer in the client's version when we speak it, which is
 // what the spec asks for, and fall back to our newest when we do not.
