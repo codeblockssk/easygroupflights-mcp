@@ -14,6 +14,9 @@ SITE_URL = "https://easygroupflights.com"
 GROUP_MIN_PASSENGERS = "10"
 # Currency the fare service quotes in; follows whichever server PELIKAN_MCP_URL points at.
 FARE_CURRENCY = "EUR"
+# Public, read-only Ghost Content API keys (printed in each blog page), for serving the studies as resources.
+GHOST_CONTENT_KEY_EN = "54c96f6544712cd43f04021bd8"
+GHOST_CONTENT_KEY_PL = "dd998ceed48d2e29d0cb19fb70"
 
 [[routes]]
 pattern = "mcp.easygroupflights.com"

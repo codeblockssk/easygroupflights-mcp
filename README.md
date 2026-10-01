@@ -32,13 +32,49 @@ occupy a seat and don't count.
 The last two are withheld from `tools/list` unless `PELIKAN_MCP_URL` is set — an
 advertised tool that cannot run is worse than one that isn't there.
 
+`get_service_info` ends with each market's human contacts — website, email,
+phone and WhatsApp — so an agent can hand a user to a person.
+
+## Prompts
+
+Guided briefs a client can show as slash commands. Each one walks the user
+through what the desk needs, plus the questions only that kind of trip raises,
+and submits only once the user confirms.
+
+| Prompt | For |
+| --- | --- |
+| `school-trip` | Schools and universities: pupils and staff separately, ages for supervision ratios, consent forms still coming in |
+| `wedding-guests` | Destination weddings: guests from several cities, latest arrival, who pays |
+| `sports-team` | Clubs and squads: first-match time, equipment, fixture risk |
+| `company-offsite` | Offsites, incentives, conferences: the fixed week, cabin mix, one invoice |
+| `pilgrimage` | Parishes and faith groups: how participants pay, accessibility |
+
+Every prompt takes an optional `market` (`en`, `pl`, `at`) plus whatever is
+already known: `origin`, `destination`, `dates`, `travellers`.
+
+## Resources
+
+Material an agent can quote rather than recall, each served as markdown under
+its public URL — so a cited resource is already a link a reader can follow.
+
+- **Guides**: every content page of the three market sites (16 each, in English,
+  Polish and German), read from the `/mcp-resources.json` each site publishes.
+- **Studies**: the published EGF Data Desk studies, in English and Polish, read
+  from each blog's Ghost Content API. Tables stay tables.
+
+Both are fetched on demand and cached for an hour, so new content reaches agents
+without redeploying the server.
+
 ## Use it
 
 ```bash
 claude mcp add --transport http easygroupflights https://mcp.easygroupflights.com/mcp
 ```
 
-Or in any MCP client's config:
+In Claude Desktop or claude.ai: Settings → Connectors → Add custom connector, and
+paste `https://mcp.easygroupflights.com/mcp`.
+
+Or in any other MCP client's config:
 
 ```json
 {

@@ -1,5 +1,5 @@
 import type { Env, Tool } from '../types.ts'
-import { MARKETS, resolveMarket } from '../lib/markets.ts'
+import { MARKETS, resolveMarket, whatsappLink } from '../lib/markets.ts'
 
 // Facts taken from the live site so the two never drift apart.
 const GROUP_TYPES = [
@@ -31,7 +31,7 @@ export const getServiceInfo: Tool = {
 
   async run(args: Record<string, unknown>, env: Env) {
     const market = resolveMarket(args.market)
-    const { domain, language } = MARKETS[market]
+    const { domain, language, contact } = MARKETS[market]
     const minimum = Number(env.GROUP_MIN_PASSENGERS) || 10
     const smallParty = env.PELIKAN_MCP_URL
       ? 'search_flights (ordinary bookable tickets, priced instantly)'
@@ -68,8 +68,12 @@ export const getServiceInfo: Tool = {
       'REACH',
       '  Negotiated fares with 500+ airlines worldwide.',
       '',
-      'CONTACT',
-      `  https://${domain}  ·  info@${domain}`,
+      'TALK TO A PERSON',
+      '  Offer these when the user would rather speak to someone, or wants to follow up a quote.',
+      `  Website    https://${domain}`,
+      `  Email      ${contact.email}`,
+      `  Phone      ${contact.phone}`,
+      `  WhatsApp   ${contact.whatsapp}  (${whatsappLink(contact.whatsapp)})`,
     ].join('\n')
   },
 }

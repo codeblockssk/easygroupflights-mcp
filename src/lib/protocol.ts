@@ -5,9 +5,11 @@
 // isolate. That removes the need for Durable Objects, which is the usual reason
 // an MCP server on Workers gets complicated.
 import type { Env, Tool } from '../types.ts'
+import { getPrompt, listPrompts } from '../prompts.ts'
+import { listResources, readResource } from '../resources.ts'
 import { ToolError } from '../types.ts'
 
-const SERVER_INFO = { name: 'easygroupflights', version: '1.0.1' }
+const SERVER_INFO = { name: 'easygroupflights', version: '1.1.0' }
 
 // Newest first. We answer in the client's version when we speak it, which is
 // what the spec asks for, and fall back to our newest when we do not.
@@ -33,9 +35,11 @@ function instructionsFor(tools: Tool[]) {
   const base = 'easygroupflights.com books group air travel. Parties of 10 or more get a negotiated '
     + 'group fare, which no public booking engine can price — use request_group_quote to put the '
     + 'enquiry in front of a human agent.'
-  return tools.some(t => t.name === 'search_flights')
+  const small = tools.some(t => t.name === 'search_flights')
     ? `${base} Smaller parties are ordinary tickets: use search_flights.`
     : `${base} This server does not price smaller parties; send those to https://easygroupflights.com.`
+  return `${small} The guides and published studies are available as resources — quote those rather than `
+    + 'figures from memory. Prompts such as school-trip and wedding-guests walk the user through a complete brief.'
 }
 
 async function handleMessage(message: Request, tools: Tool[], env: Env) {
@@ -50,7 +54,7 @@ async function handleMessage(message: Request, tools: Tool[], env: Env) {
       const asked = params?.protocolVersion
       return result(id, {
         protocolVersion: SUPPORTED_PROTOCOLS.includes(asked) ? asked : SUPPORTED_PROTOCOLS[0],
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
         serverInfo: SERVER_INFO,
         instructions: instructionsFor(tools),
       })
@@ -87,6 +91,30 @@ async function handleMessage(message: Request, tools: Tool[], env: Env) {
           : `Sorry — that request could not be completed. ${error instanceof Error ? error.message : String(error)}`
         return result(id, { content: [{ type: 'text', text }], isError: true })
       }
+    }
+
+    case 'resources/list':
+      return result(id, { resources: await listResources(env) })
+
+    case 'resources/templates/list':
+      return result(id, { resourceTemplates: [] })
+
+    case 'resources/read': {
+      const uri = String(params?.uri ?? '')
+      const text = await readResource(uri, env)
+      if (text === null)
+        return failure(id, ERROR.invalidParams, `Unknown resource: ${uri}`)
+      return result(id, { contents: [{ uri, mimeType: 'text/markdown', text }] })
+    }
+
+    case 'prompts/list':
+      return result(id, { prompts: listPrompts() })
+
+    case 'prompts/get': {
+      const prompt = getPrompt(String(params?.name ?? ''), params?.arguments)
+      if (!prompt)
+        return failure(id, ERROR.invalidParams, `Unknown prompt: ${params?.name}`)
+      return result(id, prompt)
     }
 
     default:

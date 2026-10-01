@@ -9,6 +9,13 @@ export interface Env {
   /** Party size at which a booking stops being individual seats and becomes a group. */
   GROUP_MIN_PASSENGERS: string
   /**
+   * Ghost Content API keys for the English and Polish blogs, used to serve the
+   * published studies as resources. Read-only and public by design — Ghost
+   * prints them into every blog page for its search widget.
+   */
+  GHOST_CONTENT_KEY_EN?: string
+  GHOST_CONTENT_KEY_PL?: string
+  /**
    * Currency the fare service quotes in. It returns bare numbers with no
    * currency of their own, so this says what they mean.
    */
