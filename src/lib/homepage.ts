@@ -99,7 +99,7 @@ export function homepage(env: Env, origin: string) {
   </table>
 
   <h2>Guided briefs</h2>
-  <p class="sub">Prompts your client can show as slash commands. Each walks the user through the brief the desk needs.</p>
+  <p class="sub">Each walks the user through the brief the desk needs. In Claude Desktop and claude.ai: + → Connectors → Add from Easygroupflights. In Claude Code: <code>/mcp__easygroupflights__school-trip</code> and so on.</p>
   <ul class="prompts">${prompts}</ul>
 
   <h2>Resources an agent can cite</h2>

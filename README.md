@@ -37,8 +37,9 @@ phone and WhatsApp — so an agent can hand a user to a person.
 
 ## Prompts
 
-Guided briefs a client can show as slash commands. Each one walks the user
-through what the desk needs, plus the questions only that kind of trip raises,
+Guided briefs. In Claude Desktop and claude.ai they are under + → Connectors →
+Add from Easygroupflights; in Claude Code they are `/mcp__easygroupflights__<name>`.
+Each one walks the user through what the desk needs, plus the questions only that kind of trip raises,
 and submits only once the user confirms.
 
 | Prompt | For |

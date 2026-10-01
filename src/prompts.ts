@@ -1,9 +1,9 @@
 import { MARKETS, resolveMarket } from './lib/markets.ts'
 
 /**
- * Guided briefs for the trips the desk quotes most. A client such as Claude
- * Desktop or Claude Code shows each as a slash command; picking one starts a
- * conversation that collects what the specialist needs before anything is
+ * Guided briefs for the trips the desk quotes most. Claude Desktop and claude.ai
+ * list them under + → Connectors → Add from <server>; Claude Code offers them as
+ * /mcp__easygroupflights__<name>. Picking one starts a conversation that collects what the specialist needs before anything is
  * sent, so the enquiry arrives complete rather than as a half-filled form.
  *
  * The prompt text is English: it instructs the model, which then talks to the
