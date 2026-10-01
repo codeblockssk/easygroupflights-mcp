@@ -24,16 +24,64 @@ occupy a seat and don't count.
 
 | Tool | What it does |
 | --- | --- |
-| `get_service_info` | How group booking works, what the threshold is, what a quote costs and how long it takes. Submits nothing. |
-| `request_group_quote` | 10+ travellers. Submits a structured enquiry to a group specialist. Returns a confirmation, not a price. |
-| `search_flights` | 9 or fewer. Live bookable fares with carriers, stops and a booking link. |
-| `send_flight_offer` | Emails one of those fares to the traveller as a formal offer. |
+| `egf_get_service_info` | How group booking works, what the threshold is, what a quote costs and how long it takes. Submits nothing. |
+| `egf_prepare_group_quote` | 10+ travellers. Checks the brief and returns exactly what would be sent, with a confirmation token. Sends nothing. |
+| `egf_request_group_quote` | Sends a prepared brief to a group specialist. Takes only the token. Returns a confirmation, not a price. |
+| `egf_search_flights` | 9 or fewer. Live fares with carriers and stops, each with an `offer_id`. |
+| `egf_get_offer` | One fare by `offer_id`: price, flights, a booking link and `valid_until`. |
+| `egf_prepare_flight_offer` | Shows the offer email that would be sent, with a confirmation token. Sends nothing. |
+| `egf_send_flight_offer` | Emails a prepared offer to the traveller. Takes only the token. |
 
-The last two are withheld from `tools/list` unless `PELIKAN_MCP_URL` is set — an
+The four fare tools are withheld from `tools/list` unless `PELIKAN_MCP_URL` is set — an
 advertised tool that cannot run is worse than one that isn't there.
 
-`get_service_info` ends with each market's human contacts — website, email,
+`egf_get_service_info` ends with each market's human contacts — website, email,
 phone and WhatsApp — so an agent can hand a user to a person.
+
+Every tool:
+
+- sets all four annotations (`readOnlyHint`, `destructiveHint`,
+  `idempotentHint`, `openWorldHint`) explicitly. Only the two that send
+  something are writes, and none is destructive.
+- declares an `outputSchema` and returns `structuredContent` alongside the text.
+- takes snake_case inputs.
+
+Writes come in pairs, because not every client asks the user before a write.
+The prepare tool returns the summary and a `confirmation_token`, which is
+signed with `CONFIRM_SECRET` and valid for 15 minutes. The write takes only
+that token, so it cannot send anything the summary did not show.
+
+Both writes accept an optional `idempotency_key`. Without one, the token
+itself is the key, so a prepared write is carried out at most once. Keys are
+kept for 24 hours, per Cloudflare data centre.
+
+Callers presenting `GATEWAY_TOKEN` as a bearer token are the Tripdesk gateway:
+
+- They get their own rate limit of 1,200 a minute; everyone else gets 60 a
+  minute per address.
+- Their booking links are left untagged. Direct callers' links get
+  `utm_source=mcp`.
+
+Every tool call answers within 28 seconds.
+
+`egf_search_flights` pages with `limit` (default 10, at most 20) and `cursor`.
+Each fare carries one opaque `offer_id`, valid for 30 minutes. It is all
+`egf_get_offer` and `egf_prepare_flight_offer` need. Search results carry no
+booking links, and no session or trip ids.
+
+### Upgrading from 1.x
+
+2.0 renamed the tools with the `egf_` prefix and the inputs to snake_case.
+Most of what worked in 1.x still does:
+
+- The old names (`request_group_quote`, …) are still answered, though no longer
+  listed.
+- camelCase arguments (`departureDate`, `fareId`, …) are read as their
+  snake_case names.
+- `egf_prepare_flight_offer` still takes the four separate ids a 1.x search
+  printed.
+- A 1.x one-step write is refused, with a message naming the prepare tool to
+  call first.
 
 ## Prompts
 
@@ -106,7 +154,7 @@ Three secrets, set with `wrangler secret put`:
 | Secret | Meaning |
 | --- | --- |
 | `AUTOPILOT_URL` | Group-enquiry intake. Infrastructure rather than a credential; a secret only because this repo is public |
-| `AUTOPILOT_API_KEY` | Sent as `X-API-Key` to the intake. Without either of these `request_group_quote` refuses rather than failing silently |
+| `AUTOPILOT_API_KEY` | Sent as `X-API-Key` to the intake. Without either of these `egf_request_group_quote` refuses rather than failing silently |
 | `PELIKAN_MCP_URL` | Streamable-HTTP endpoint of the Pelikan MCP server, which prices sub-group parties. Optional — its tools stay hidden while unset |
 
 ## Licence
@@ -127,7 +175,7 @@ npm run deploy     # wrangler deploy
 ```
 
 Put local secrets in `.dev.vars` (gitignored). Leaving `AUTOPILOT_API_KEY` unset
-is the safe way to exercise `request_group_quote` end to end: it validates
+is the safe way to exercise `egf_request_group_quote` end to end: it validates
 everything and stops at the intake boundary without creating a real lead.
 
 Drive it by hand with:

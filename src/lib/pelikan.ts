@@ -71,14 +71,15 @@ async function post(url: string, message: unknown, session: Session = {}) {
 
   let response: Response
   try {
-    response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(message) })
+    // Each search is four of these in a row, inside the 30 seconds a caller waits.
+    response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(message), signal: AbortSignal.timeout(12_000) })
   }
   catch {
     // The upstream being down is an operational fact, not something the caller
     // mistyped — say so plainly and point at the path that still works.
     throw new ToolError(
       'The live fare service cannot be reached right now. Please try again shortly. '
-      + 'Group enquiries of 10 or more are unaffected — request_group_quote still works.',
+      + 'Group enquiries of 10 or more are unaffected — egf_request_group_quote still works.',
     )
   }
 
@@ -104,7 +105,7 @@ async function post(url: string, message: unknown, session: Session = {}) {
 export async function callPelikanTool(name: string, args: Record<string, unknown>, env: Env): Promise<string> {
   const url = env.PELIKAN_MCP_URL
   if (!url)
-    throw new ToolError('Live fare search is not enabled on this server. For parties of 10 or more use request_group_quote, which is fully available.')
+    throw new ToolError('Live fare search is not enabled on this server. For parties of 10 or more use egf_request_group_quote, which is fully available.')
 
   const init = await post(url, {
     jsonrpc: '2.0',

@@ -111,8 +111,9 @@ export function getPrompt(name: string, args: Record<string, string> = {}) {
     `For this kind of trip, also ask about:\n${prompt.specifics.map(s => `- ${s}`).join('\n')}`,
     '',
     'Ask only for what is still missing, a few questions at a time, in my language. Put the trip-specific '
-    + 'answers in the note. When the brief is complete, read it back to me, and only once I confirm, call '
-    + `request_group_quote with market "${market}". If we turn out to be nine or fewer, use search_flights instead.`,
+    + `answers in the note. When the brief is complete, call egf_prepare_group_quote with market "${market}" and `
+    + 'read its summary back to me. Only once I confirm, call egf_request_group_quote with the confirmation_token it '
+    + 'returned. If we turn out to be nine or fewer, use egf_search_flights instead.',
   ].filter((line, i, all) => line || all[i - 1]).join('\n')
 
   return {

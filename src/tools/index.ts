@@ -1,10 +1,13 @@
 import type { Env, Tool } from '../types.ts'
-import { requestGroupQuote } from './group-quote.ts'
+import { getOffer } from './get-offer.ts'
+import { prepareGroupQuote, requestGroupQuote } from './group-quote.ts'
 import { searchFlights } from './search-flights.ts'
-import { sendFlightOffer } from './send-offer.ts'
+import { prepareFlightOffer, sendFlightOffer } from './send-offer.ts'
 import { getServiceInfo } from './service-info.ts'
 
-const ALL: Tool[] = [getServiceInfo, requestGroupQuote, searchFlights, sendFlightOffer]
+// Each write is a pair: a read-only prepare that returns a confirmation token,
+// and the write that acts only on it.
+const ALL: Tool[] = [getServiceInfo, prepareGroupQuote, requestGroupQuote, searchFlights, getOffer, prepareFlightOffer, sendFlightOffer]
 
 /**
  * Tools that depend on the Pelikan endpoint are withheld while it is

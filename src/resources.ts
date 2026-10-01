@@ -24,14 +24,16 @@ const STUDIES = {
 } as const
 
 const BLOG = { en: 'https://easygroupflights.com/blog', pl: 'https://grupoweloty.pl/blog' } as const
+// The timeout is renewed per request: AbortSignal.timeout starts when it is made.
 const CACHE = { cf: { cacheTtl: 3600, cacheEverything: true } } as RequestInit
+const cached = (): RequestInit => ({ ...CACHE, signal: AbortSignal.timeout(8_000) })
 
 function contentKey(env: Env, blog: keyof typeof BLOG) {
   return blog === 'pl' ? env.GHOST_CONTENT_KEY_PL : env.GHOST_CONTENT_KEY_EN
 }
 
 async function guides(domain: string): Promise<Guide[]> {
-  const res = await fetch(`https://${domain}/mcp-resources.json`, CACHE)
+  const res = await fetch(`https://${domain}/mcp-resources.json`, cached())
   return res.ok ? res.json() as Promise<Guide[]> : []
 }
 
@@ -40,7 +42,7 @@ async function studyIndex(env: Env, blog: keyof typeof BLOG) {
   if (!key)
     return []
   const filter = `slug:[${STUDIES[blog].join(',')}]`
-  const res = await fetch(`${BLOG[blog]}/ghost/api/content/posts/?key=${key}&filter=${encodeURIComponent(filter)}&fields=slug,title,custom_excerpt,url&limit=all`, CACHE)
+  const res = await fetch(`${BLOG[blog]}/ghost/api/content/posts/?key=${key}&filter=${encodeURIComponent(filter)}&fields=slug,title,custom_excerpt,url&limit=all`, cached())
   if (!res.ok)
     return []
   const { posts } = await res.json() as { posts: { slug: string, title: string, custom_excerpt: string | null }[] }
@@ -72,7 +74,7 @@ export async function readResource(uri: string, env: Env) {
     const slug = uri.startsWith(`${base}/`) ? uri.slice(base.length + 1).replace(/\/$/, '') : ''
     if (slug && (STUDIES[blog] as readonly string[]).includes(slug)) {
       const key = contentKey(env, blog)
-      const res = await fetch(`${base}/ghost/api/content/posts/slug/${slug}/?key=${key}&formats=html&fields=title,html,url,published_at`, CACHE)
+      const res = await fetch(`${base}/ghost/api/content/posts/slug/${slug}/?key=${key}&formats=html&fields=title,html,url,published_at`, cached())
       if (!res.ok)
         return null
       const { posts: [post] } = await res.json() as { posts: { title: string, html: string, published_at: string }[] }

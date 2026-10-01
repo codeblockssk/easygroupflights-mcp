@@ -3,10 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2026-08-19"
 workers_dev = true
 
-# Public, non-secret configuration. Three secrets are set with
-#   wrangler secret put AUTOPILOT_URL
-#   wrangler secret put AUTOPILOT_API_KEY
-#   wrangler secret put PELIKAN_MCP_URL
+# Public, non-secret configuration. Secrets are set with wrangler secret put:
+#   AUTOPILOT_URL, AUTOPILOT_API_KEY, PELIKAN_MCP_URL
+#   CONFIRM_SECRET   signs the confirmation tokens of two-step writes
+#   GATEWAY_TOKEN    the Tripdesk gateway's service token (marks its calls)
 # The intake URL is a secret rather than a var only because this repo is public;
 # it is infrastructure, not a credential.
 [vars]
@@ -21,3 +21,15 @@ GHOST_CONTENT_KEY_PL = "dd998ceed48d2e29d0cb19fb70"
 [[routes]]
 pattern = "mcp.easygroupflights.com"
 custom_domain = true
+
+# Per address for direct callers; one shared budget for the gateway, which
+# stands for many travellers. Periods can only be 10 or 60 seconds.
+[[ratelimits]]
+name = "DIRECT_LIMIT"
+namespace_id = "1101"
+simple = { limit = 60, period = 60 }
+
+[[ratelimits]]
+name = "GATEWAY_LIMIT"
+namespace_id = "1102"
+simple = { limit = 1200, period = 60 }

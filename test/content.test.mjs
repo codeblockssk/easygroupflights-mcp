@@ -23,7 +23,7 @@ test('a WhatsApp number becomes a wa.me link of digits only', () => {
 test('initialize advertises tools, resources and prompts', async () => {
   const { result } = await rpc('initialize', { protocolVersion: '2025-06-18' })
   assert.deepEqual(Object.keys(result.capabilities).sort(), ['prompts', 'resources', 'tools'])
-  assert.equal(result.serverInfo.version, '1.1.0')
+  assert.equal(result.serverInfo.version, '2.0.0')
 })
 
 test('every prompt is listed with the market argument', () => {
@@ -38,11 +38,16 @@ test('a prompt routes to the market asked for and asks before submitting', () =>
   assert.match(text, /grupoweloty\.pl/)
   assert.match(text, /market "pl"/)
   assert.match(text, /travellers: 42/)
-  assert.match(text, /only once I confirm/)
+  assert.match(text, /egf_prepare_group_quote[\s\S]+Only once I confirm[\s\S]+confirmation_token/)
   assert.match(text, /1 adult per 20 minors/)
 })
 
 test('an unknown prompt or resource is an invalid-params error, not a crash', async () => {
   assert.equal((await rpc('prompts/get', { name: 'nope' })).error.code, -32602)
   assert.equal((await rpc('resources/read', { uri: 'https://example.com/x/' })).error.code, -32602)
+})
+
+test('two requests that differ only in key order fingerprint the same', async () => {
+  const { canonical } = await import('../src/lib/cache.ts')
+  assert.equal(canonical({ b: 1, a: [{ y: 2, x: 1 }] }), canonical({ a: [{ x: 1, y: 2 }], b: 1 }))
 })

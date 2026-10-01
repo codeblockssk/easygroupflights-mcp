@@ -51,11 +51,18 @@ export async function submitGroupRequest(request: GroupRequest, env: Env) {
   if (!env.AUTOPILOT_URL || !env.AUTOPILOT_API_KEY)
     throw new ToolError('The quote service is not configured on this server. Please contact easygroupflights.com directly.')
 
-  const response = await fetch(env.AUTOPILOT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': env.AUTOPILOT_API_KEY },
-    body: JSON.stringify(buildPayload(request)),
-  })
+  let response: Response
+  try {
+    response = await fetch(env.AUTOPILOT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': env.AUTOPILOT_API_KEY },
+      body: JSON.stringify(buildPayload(request)),
+      signal: AbortSignal.timeout(20_000),
+    })
+  }
+  catch {
+    throw new ToolError('The quote desk did not answer in time. Please try again, or write to info@easygroupflights.com.')
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '')

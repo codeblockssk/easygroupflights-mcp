@@ -8,10 +8,13 @@ import { allTools } from '../tools/index.ts'
  * the server is for and how to connect it; the protocol detail comes after.
  */
 const WHEN: Record<string, string> = {
-  request_group_quote: 'Ten or more travellers. A specialist replies by email with a written quote.',
-  search_flights: 'Nine or fewer. Live, bookable fares with prices, carriers and stops.',
-  send_flight_offer: 'Emails one of those fares as a formal offer, once the traveller confirms.',
-  get_service_info: 'How group fares work, the thresholds, and how to reach a person.',
+  egf_prepare_group_quote: 'Ten or more travellers. Checks the brief and shows what will be sent.',
+  egf_request_group_quote: 'Sends the confirmed brief. A specialist replies by email with a written quote.',
+  egf_search_flights: 'Nine or fewer. Live, bookable fares with prices, carriers and stops.',
+  egf_get_offer: 'One of those fares: the price, the flights and a booking link.',
+  egf_prepare_flight_offer: 'Shows the offer email before anything is sent.',
+  egf_send_flight_offer: 'Emails that fare as a formal offer, once the traveller confirms.',
+  egf_get_service_info: 'How group fares work, the thresholds, and how to reach a person.',
 }
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
