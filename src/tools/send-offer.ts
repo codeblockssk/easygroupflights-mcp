@@ -1,4 +1,4 @@
-import type { OfferIds } from '../lib/offer.ts'
+import type { OfferDetails, OfferIds } from '../lib/offer.ts'
 import type { Env, Tool } from '../types.ts'
 import { CONFIRMATION_TOKEN, issueToken, redeemToken } from '../lib/confirm.ts'
 import { IDEMPOTENCY_KEY } from '../lib/idempotency.ts'
@@ -6,7 +6,6 @@ import { decodeOffer, encodeOffer } from '../lib/offer.ts'
 import { callPelikanTool } from '../lib/pelikan.ts'
 import { email, int, optionalStr, str } from '../lib/validate.ts'
 import { ToolError } from '../types.ts'
-import { fare, savedSearch } from './search-flights.ts'
 
 const ACTION = 'flight_offer'
 
@@ -79,9 +78,10 @@ export const prepareFlightOffer: Tool = {
 
   async run(args: Record<string, unknown>, env: Env) {
     const given = optionalStr(args, 'offer_id')
-    const ids = given ? decodeOffer(given) : legacyIds(args)
+    const offer = given ? await decodeOffer(given, env) : { ids: legacyIds(args), details: undefined }
+    const { ids } = offer
     const request: OfferEmail = {
-      offerId: given ?? encodeOffer(ids),
+      offerId: given ?? await encodeOffer({ ids }, env),
       ids: { fare: ids.fare, there: ids.there, back: ids.back, session: ids.session },
       address: email(args),
       name: optionalStr(args, 'name') ?? 'Traveller',
@@ -91,11 +91,10 @@ export const prepareFlightOffer: Tool = {
       infants: int(args, 'infants'),
     }
 
-    // The summary names the fare when the search is still cached; the email
-    // goes out either way, since the upstream holds the fare, not us.
-    const search = await savedSearch(ids.session)
-    const flight = search?.flights.find(f => String(f.fare_id) === ids.fare && String(f.there_trip_id) === ids.there)
-    const details = flight ? fare(flight, 0, ids.session, search!.issued) : {}
+    // The summary names the fare from what the offer_id carries. A 1.x set of
+    // ids carries nothing, and the email goes out all the same: the upstream
+    // holds the fare, not us.
+    const details: Partial<OfferDetails> = offer.details ?? {}
 
     const { token, expiresAt } = await issueToken(ACTION, request, env)
     const party = `${request.adults} adult${request.adults === 1 ? '' : 's'}${request.children ? `, ${request.children} children` : ''}${request.infants ? `, ${request.infants} infants` : ''}`
@@ -105,7 +104,7 @@ export const prepareFlightOffer: Tool = {
         'Ready to email this offer. Not sent yet.',
         '',
         `  To        ${request.name} <${request.address}>`,
-        `  Fare      ${details.price !== undefined ? `${details.price} ${env.FARE_CURRENCY ?? 'EUR'} per person, ` : ''}${(details.carriers as string[] | undefined)?.join(', ') ?? request.offerId}`,
+        `  Fare      ${details.price !== undefined ? `${details.price} ${env.FARE_CURRENCY ?? 'EUR'} per person, ` : ''}${details.carriers?.join(', ') ?? request.offerId}`,
         details.departure ? `  Departs   ${details.departure}` : '',
         `  Party     ${party}`,
         `  Message   ${request.message}`,

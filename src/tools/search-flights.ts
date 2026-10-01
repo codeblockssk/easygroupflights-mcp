@@ -1,12 +1,15 @@
+import type { OfferDetails } from '../lib/offer.ts'
 import type { Env, Tool } from '../types.ts'
 import { recall, remember, sha256 } from '../lib/cache.ts'
-import { encodeOffer, OFFER_TTL } from '../lib/offer.ts'
-import { callPelikanTool } from '../lib/pelikan.ts'
+import { cleanLink, encodeOffer, OFFER_TTL } from '../lib/offer.ts'
+import { openPelikan } from '../lib/pelikan.ts'
 import { airports, int, isoDate, optionalStr } from '../lib/validate.ts'
 import { ToolError } from '../types.ts'
 
-// Results are cached per search session so a later page is the same search,
-// not a fresh one whose ids belong to a different session.
+// Results are cached per search session so a later page is the same search.
+// The cache is per data centre, so a page asked for elsewhere can miss; it is
+// then searched again rather than refused, since every offer_id carries its
+// own session and stays valid either way.
 const PAGE_TTL = OFFER_TTL
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 20
@@ -14,16 +17,15 @@ const MAX_LIMIT = 20
 /** `issued` is when the search ran, in seconds: every offer from it expires together, with the cache. */
 export interface Saved { route: string, sessionId: string, issued: number, flights: any[] }
 
-/** The cached search a fare belongs to, so a later call can describe it without searching again. */
-export async function savedSearch(sessionId: string) {
+async function savedSearch(sessionId: string) {
   return recall<Saved>(`search/${await sha256(sessionId)}`)
 }
 
-function encodeCursor(sessionId: string, offset: number) {
-  return btoa(JSON.stringify({ s: sessionId, o: offset })).replace(/=+$/, '')
+function encodeCursor(sessionId: string, offset: number, route: string) {
+  return btoa(JSON.stringify({ s: sessionId, o: offset, r: route })).replace(/=+$/, '')
 }
 
-function decodeCursor(cursor: string): { s: string, o: number } {
+function decodeCursor(cursor: string): { s: string, o: number, r?: string } {
   try {
     const value = JSON.parse(atob(cursor))
     if (typeof value?.s === 'string' && Number.isInteger(value?.o) && value.o >= 0)
@@ -114,35 +116,36 @@ export const searchFlights: Tool = {
     const route = `${from}-${to}-${departureDate}-${returnDate ?? ''}`
     const cursor = optionalStr(args, 'cursor')
 
-    let saved: Saved
+    let saved: Saved | null = null
     let offset = 0
     let unparsed = ''
+    let researched = false
 
     if (cursor) {
-      const { s, o } = decodeCursor(cursor)
-      const hit = await savedSearch(s)
-      if (!hit)
-        throw new ToolError('That search has expired. Search again without a cursor.')
-      if (hit.route !== route)
+      const { s, o, r } = decodeCursor(cursor)
+      if ((r ?? route) !== route)
         throw new ToolError('That cursor belongs to a different route or dates. Pass the same origin, destination and dates as the first page.')
-      saved = hit
       offset = o
+      saved = await savedSearch(s)
+      researched = !saved
     }
-    else {
+
+    if (!saved) {
       // The upstream search is session-scoped: every result id is only
-      // meaningful within the session that produced it, so the two calls
-      // belong together.
-      const sessionId = (await callPelikanTool('getsession', {}, env)).trim()
+      // meaningful within the session that produced it, so both calls go
+      // through one connection.
+      const pelikan = await openPelikan(env)
+      const sessionId = (await pelikan.call('getsession', {})).trim()
       if (!sessionId || sessionId.startsWith('ERROR'))
         throw new ToolError('Could not open a search session with the fare service. Please try again shortly.')
 
-      const raw = await callPelikanTool('search', {
+      const raw = await pelikan.call('search', {
         from_airport: from,
         to_airport: to,
         date_from: departureDate,
         session_id: sessionId,
         ...(returnDate ? { date_to: returnDate } : {}),
-      }, env)
+      })
 
       const flights = parse(raw)
       if (!flights)
@@ -151,21 +154,23 @@ export const searchFlights: Tool = {
       if (flights?.length)
         await remember(`search/${await sha256(sessionId)}`, saved, PAGE_TTL)
     }
+    const search = saved
 
     const currency = env.FARE_CURRENCY ?? 'EUR'
-    const page = saved.flights.slice(offset, offset + limit)
-    const next = offset + limit < saved.flights.length ? encodeCursor(saved.sessionId, offset + limit) : undefined
-    const fares = page.map((f, i) => fare(f, offset + i + 1, saved.sessionId, saved.issued))
+    const page = search.flights.slice(offset, offset + limit)
+    const next = offset + limit < search.flights.length ? encodeCursor(search.sessionId, offset + limit, route) : undefined
+    const fares = await Promise.all(page.map((f, i) => fare(f, offset + i + 1, search.sessionId, search.issued, env)))
 
     const header = `Fares ${from} → ${to}, ${returnDate ? `${departureDate} returning ${returnDate}` : `${departureDate} one way`}`
       + `, ${passengers} traveller${passengers === 1 ? '' : 's'}. Prices are per person.`
     const body = unparsed
       // Never lose the answer to a formatting problem.
-      || (saved.flights.length
+      || (search.flights.length
         ? fares.map((f, i) => describe(f, page[i], currency)).join('\n\n')
         : 'No fares found for those dates. Try nearby days, or a different airport.')
     const footer = [
-      next ? `Showing ${offset + 1}–${offset + page.length} of ${saved.flights.length}. Pass cursor "${next}" for more.` : '',
+      researched ? 'The earlier search was no longer held here, so this page comes from a fresh one; fares may have moved.' : '',
+      next ? `Showing ${offset + 1}–${offset + page.length} of ${search.flights.length}. Pass cursor "${next}" for more.` : '',
       'Each offer_id lasts 30 minutes. egf_get_offer gives a fare\'s booking link; egf_prepare_flight_offer emails it as a formal offer.',
     ].filter(Boolean)
 
@@ -178,7 +183,7 @@ export const searchFlights: Tool = {
         ...(returnDate ? { return_date: returnDate } : {}),
         passengers,
         currency,
-        total: saved.flights.length,
+        total: search.flights.length,
         ...(next ? { next_cursor: next } : {}),
         fares,
       },
@@ -241,11 +246,9 @@ function count(value: unknown) {
 }
 
 /** Only fields the upstream actually gave, so the result always fits outputSchema. */
-export function fare(f: any, rank: number, session: string, issued: number): Record<string, unknown> {
+function details(f: any): OfferDetails {
   const price = Number(f.price)
-  const entries: Record<string, unknown> = {
-    rank,
-    offer_id: encodeOffer({ fare: String(f.fare_id ?? ''), there: String(f.there_trip_id ?? ''), back: String(f.back_trip_id ?? '0'), session }, issued),
+  const entries = {
     price: Number.isFinite(price) && f.price !== '' && f.price !== null ? price : undefined,
     carriers: (f.marketing_carriers ?? []).map(String),
     stops_out: count(f.stops_there),
@@ -254,10 +257,17 @@ export function fare(f: any, rank: number, session: string, issued: number): Rec
     return: isReturn(f) ? iso(f.return_date) : undefined,
     flight_numbers: (f.flight_numbers_combined ?? []).map(String),
   }
-  return Object.fromEntries(Object.entries(entries).filter(([, v]) => v !== undefined))
+  return Object.fromEntries(Object.entries(entries).filter(([, v]) => v !== undefined)) as unknown as OfferDetails
 }
 
-export function describe(f: Record<string, any>, raw: any, currency: string) {
+async function fare(f: any, rank: number, session: string, issued: number, env: Env): Promise<Record<string, any>> {
+  const shown = details(f)
+  const link = typeof f.reservation_link === 'string' && f.reservation_link.startsWith('https://') ? cleanLink(f.reservation_link) : undefined
+  const ids = { fare: String(f.fare_id ?? ''), there: String(f.there_trip_id ?? ''), back: String(f.back_trip_id ?? '0'), session }
+  return { rank, offer_id: await encodeOffer({ ids, details: shown, link }, env, issued), ...shown }
+}
+
+function describe(f: Record<string, any>, raw: any, currency: string) {
   const legs = isReturn(raw)
     ? `out ${when(raw.departure_date)} · back ${when(raw.return_date)}`
     : `out ${when(raw.departure_date)} · one way`

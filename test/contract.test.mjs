@@ -1,6 +1,7 @@
 // The tool definitions are republished unchanged by every client and directory
 // that lists the server, so their shape is pinned here rather than trusted.
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
 import { test } from 'node:test'
 import { handleRpc } from '../src/lib/protocol.ts'
 import { allTools } from '../src/tools/index.ts'
@@ -114,17 +115,44 @@ test('pre-2.0 camelCase arguments are read as their snake_case names', async () 
   assert.deepEqual(snakeKeys({ departureDate: 'old', departure_date: 'new' }), { departure_date: 'new' })
 })
 
-test('an offer_id carries the four upstream ids and nothing readable', async () => {
+test('an offer_id carries the ids, the fare and its link, and nothing readable', async () => {
   const { decodeOffer, encodeOffer } = await import('../src/lib/offer.ts')
   const ids = { fare: '20000', there: '0', back: '0', session: 'fa23b208b6d04a929a57dd7ae7b031c0' }
-  const offer = encodeOffer(ids)
-  assert.match(offer, /^of_[\w-]+$/)
+  const details = { price: 59.9, carriers: ['Vueling'], stops_out: 0, departure: '2026-11-12T20:55', flight_numbers: ['VY1261'] }
+  const link = 'https://www.pelikan.sk/sk/let/20000/0//detail/?tabIdentifier=fa23b208b6d04a929a57dd7ae7b031c0'
+  const offer = await encodeOffer({ ids, details, link }, env)
+  assert.match(offer, /^of_[\w-]+\.[\w-]+$/)
   assert.ok(!offer.includes(ids.session))
-  const { issued, ...decoded } = decodeOffer(offer)
-  assert.deepEqual(decoded, ids)
-  assert.ok(Math.abs(issued - Date.now() / 1000) < 5)
-  assert.throws(() => decodeOffer('of_nonsense'), /not one a flight search returned/)
-  assert.throws(() => decodeOffer(encodeOffer(ids, Math.floor(Date.now() / 1000) - 1801)), /expired/)
+  const decoded = await decodeOffer(offer, env)
+  assert.deepEqual([decoded.ids, decoded.details, decoded.link], [ids, details, link])
+  assert.ok(Math.abs(decoded.issued - Date.now() / 1000) < 5)
+  await assert.rejects(decodeOffer('of_nonsense', env), /not one a flight search returned/)
+  await assert.rejects(decodeOffer(await encodeOffer({ ids }, env, Math.floor(Date.now() / 1000) - 1801), env), /expired/)
+})
+
+test('a 2.0.0 offer_id, plain JSON with four ids, still decodes', async () => {
+  const { decodeOffer } = await import('../src/lib/offer.ts')
+  const legacy = `of_${Buffer.from(JSON.stringify(['20000', '0', '0', 'sess'])).toString('base64url')}`
+  assert.deepEqual((await decodeOffer(legacy, env)).ids, { fare: '20000', there: '0', back: '0', session: 'sess' })
+})
+
+test('the a_aid=None the fare service writes is dropped; a real a_aid is kept', async () => {
+  const { cleanLink } = await import('../src/lib/offer.ts')
+  assert.equal(cleanLink('https://www.pelikan.sk/sk/let/1/0//detail/?tabIdentifier=x&a_aid=None'), 'https://www.pelikan.sk/sk/let/1/0//detail/?tabIdentifier=x')
+  assert.equal(cleanLink('https://www.pelikan.sk/x/?a_aid=egf42'), 'https://www.pelikan.sk/x/?a_aid=egf42')
+})
+
+test('egf_get_offer answers from the offer_id alone, with no cache and no search', async () => {
+  const { encodeOffer } = await import('../src/lib/offer.ts')
+  const offer_id = await encodeOffer({
+    ids: { fare: '1', there: '0', back: '0', session: 's' },
+    details: { price: 10, carriers: ['Ryanair'], flight_numbers: ['FR13'] },
+    link: 'https://www.pelikan.sk/sk/let/1/0//detail/?tabIdentifier=s',
+  }, env)
+  const direct = (await rpc('tools/call', { name: 'egf_get_offer', arguments: { offer_id } })).result
+  assert.ok(!direct.isError, direct.content[0].text)
+  assert.equal(direct.structuredContent.booking_url, 'https://www.pelikan.sk/sk/let/1/0//detail/?tabIdentifier=s&utm_source=mcp')
+  assert.match(direct.structuredContent.valid_until, /^\d{4}-\d\d-\d\dT/)
 })
 
 test('no output schema exposes a session or upstream id', () => {
@@ -188,4 +216,16 @@ test('search results carry offer_ids, not booking links', () => {
   const offer = allTools.find(t => t.name === 'egf_get_offer').outputSchema
   assert.ok(offer.required.includes('booking_url') && offer.required.includes('valid_until'))
   assert.ok(!JSON.stringify(allTools.map(t => t.outputSchema)).includes('handoff'))
+})
+
+test('a forged offer_id cannot put its own link in front of the traveller', async () => {
+  const { encodeOffer } = await import('../src/lib/offer.ts')
+  const offer = { ids: { fare: '1', there: '0', back: '0', session: 's' }, details: { price: 1, carriers: ['X'], flight_numbers: [] }, link: 'https://evil.example/book' }
+  const forged = await encodeOffer(offer, { CONFIRM_SECRET: 'attacker' })
+  const { result } = await rpc('tools/call', { name: 'egf_get_offer', arguments: { offer_id: forged } })
+  assert.equal(result.isError, true)
+  const unsigned = forged.split('.')[0]
+  const second = (await rpc('tools/call', { name: 'egf_get_offer', arguments: { offer_id: unsigned } })).result
+  assert.equal(second.isError, true)
+  assert.ok(!second.content[0].text.includes('evil.example'))
 })

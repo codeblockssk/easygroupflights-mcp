@@ -34,6 +34,12 @@ async function key(env: Env) {
   return crypto.subtle.importKey('raw', encoder.encode(env.CONFIRM_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify'])
 }
 
+/** A short HMAC over `text`, for handles a caller must not be able to forge. */
+export async function signature(text: string, env: Env) {
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', await key(env), encoder.encode(text)))
+  return toBase64Url(mac.slice(0, 16))
+}
+
 export async function issueToken(action: string, data: unknown, env: Env) {
   const expires = Math.floor(Date.now() / 1000) + TTL_SECONDS
   const body = toBase64Url(encoder.encode(JSON.stringify({ a: action, d: data, e: expires })))

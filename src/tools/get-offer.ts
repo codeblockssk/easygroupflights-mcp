@@ -1,7 +1,6 @@
 import type { CallContext, Env, Tool } from '../types.ts'
 import { decodeOffer, validUntil } from '../lib/offer.ts'
 import { ToolError } from '../types.ts'
-import { fare, savedSearch } from './search-flights.ts'
 
 /**
  * Direct callers' links are tagged so a sale that started in an assistant can
@@ -54,30 +53,27 @@ export const getOffer: Tool = {
     if (!offerId)
       throw new ToolError('Missing offer_id. Pass the offer_id of a fare from a flight search.')
 
-    const ids = decodeOffer(offerId)
-    const search = await savedSearch(ids.session)
-    const flight = search?.flights.find(f =>
-      String(f.fare_id) === ids.fare && String(f.there_trip_id) === ids.there && String(f.back_trip_id ?? '0') === ids.back)
-    if (!search || !flight)
-      throw new ToolError('That offer is no longer held. Search again for current fares.')
-
-    const link = typeof flight.reservation_link === 'string' && flight.reservation_link.startsWith('https://') ? flight.reservation_link : ''
-    if (!link)
+    // Everything comes from the offer_id itself, so this answers in whichever
+    // data centre the call lands, with no second search.
+    const offer = await decodeOffer(offerId, env)
+    if (!offer.details || offer.issued === undefined)
+      throw new ToolError('That offer_id comes from an older search that did not carry its details. Search again for current fares.')
+    if (!offer.link)
       throw new ToolError('The fare service gave no booking link for this fare. Choose another, or ask for it to be emailed as an offer.')
 
-    const { rank: _, offer_id: __, ...details } = fare(flight, 0, ids.session, search.issued)
+    const details = offer.details
     const currency = env.FARE_CURRENCY ?? 'EUR'
     const structured = {
       offer_id: offerId,
       ...details,
       currency,
-      booking_url: tagLink(link, context),
-      valid_until: validUntil(search.issued),
+      booking_url: tagLink(offer.link, context),
+      valid_until: validUntil(offer.issued),
     }
 
     return {
       text: [
-        `${details.price ?? 'Price on request'} ${currency} per person — ${(details.carriers as string[]).join(', ') || 'unknown carrier'}, flights ${(details.flight_numbers as string[]).join(' / ') || 'n/a'}.`,
+        `${details.price ?? 'Price on request'} ${currency} per person — ${details.carriers.join(', ') || 'unknown carrier'}, flights ${details.flight_numbers.join(' / ') || 'n/a'}.`,
         `Departs ${details.departure ?? 'n/a'}${details.return ? `, returns ${details.return}` : ', one way'}.`,
         `Book: ${structured.booking_url}`,
         `This offer is valid until ${structured.valid_until}; after that, search again.`,
