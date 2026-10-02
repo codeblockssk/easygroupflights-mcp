@@ -88,7 +88,9 @@ async function handleMessage(message: Request, tools: Tool[], env: Env, context:
           description,
           inputSchema,
           outputSchema,
-          annotations,
+          // The title twice: top level is the current spec, `annotations.title`
+          // the older place that the Connectors Directory portal still reads.
+          annotations: { title, ...annotations },
         })),
       })
 

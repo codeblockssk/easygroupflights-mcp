@@ -229,3 +229,8 @@ test('a forged offer_id cannot put its own link in front of the traveller', asyn
   assert.equal(second.isError, true)
   assert.ok(!second.content[0].text.includes('evil.example'))
 })
+
+test('every listed tool repeats its title in annotations, where the directory reads it', async () => {
+  for (const tool of (await rpc('tools/list')).result.tools)
+    assert.equal(tool.annotations.title, tool.title, tool.name)
+})
