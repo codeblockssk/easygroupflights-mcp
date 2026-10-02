@@ -112,6 +112,7 @@ export function homepage(env: Env, origin: string) {
     A service of <a href="${env.SITE_URL}">easygroupflights.com</a>, grupoweloty.pl and gruppenfluege.at — IATA-accredited group air travel.
     Open source under the MIT licence: <a href="https://github.com/codeblockssk/easygroupflights-mcp">github.com/codeblockssk/easygroupflights-mcp</a>.
     Listed in the official MCP registry as <code>com.easygroupflights/easygroupflights</code>.
+    <a href="${env.SITE_URL}/mcp-privacy/">Privacy notice</a>.
   </footer>
 </main>
 <script>

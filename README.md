@@ -83,6 +83,10 @@ Most of what worked in 1.x still does:
 - A 1.x one-step write is refused, with a message naming the prepare tool to
   call first.
 
+## Privacy
+
+What the server receives, where it goes and how long it is kept: [easygroupflights.com/mcp-privacy/](https://easygroupflights.com/mcp-privacy/). The controller is pelicantravel.com s.r.o.; privacy questions go to dpo@pelikan.sk.
+
 ## Prompts
 
 Guided briefs. In Claude Desktop and claude.ai they are under + → Connectors →
