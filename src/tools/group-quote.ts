@@ -166,7 +166,7 @@ export const prepareGroupQuote: Tool = {
       children_ages: { type: 'array', items: { type: 'integer' }, description: 'Age of each child, one entry per child.' },
       cabin_class: { type: 'string', enum: ['economy', 'business'], description: 'Defaults to economy.' },
       email: { type: 'string', description: 'Where the quote is sent. Required.' },
-      phone: { type: 'string', description: 'Contact number in international form, e.g. +441244568183. Required — the agent may call to confirm details.' },
+      phone: { type: 'string', description: 'Contact number in international form, e.g. +441244568183. Required: a group specialist may phone to confirm details.' },
       first_name: { type: 'string', description: 'Organiser\'s first name.' },
       last_name: { type: 'string', description: 'Organiser\'s surname.' },
       note: {
