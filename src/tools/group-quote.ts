@@ -197,7 +197,7 @@ export const prepareGroupQuote: Tool = {
         '',
         ...lines,
         '',
-        `Show this to the user. Once they confirm, send it with confirmation_token ${token} (valid until ${expiresAt}).`,
+        `Not sent. Sending it requires confirmation_token ${token} (valid until ${expiresAt}).`,
       ].join('\n'),
       structured: { ...structured, confirmation_token: token, expires_at: expiresAt },
     }

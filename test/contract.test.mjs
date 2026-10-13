@@ -33,7 +33,7 @@ test('every tool sets all four annotations explicitly, as booleans', async () =>
 test('only the two writes are non-read-only, and nothing is destructive', () => {
   assert.ok(allTools.length < 10)
   const writes = allTools.filter(t => !t.annotations.readOnlyHint).map(t => t.name).sort()
-  assert.deepEqual(writes, ['egf_request_group_quote', 'egf_send_flight_offer'])
+  assert.deepEqual(writes, ['egf_request_group_quote'])
   assert.ok(allTools.every(t => !t.annotations.destructiveHint))
 })
 
@@ -164,7 +164,7 @@ test('no output schema exposes a session or upstream id', () => {
 const BRIEF = { origin: ['VIE'], destination: ['BCN'], departure_date: '2027-05-10', adults: 12, email: 'organiser@example.com', phone: '+421947797797', market: 'at' }
 
 test('every write takes only a confirmation token and has a read-only prepare step', () => {
-  for (const [prepare, write] of [['egf_prepare_group_quote', 'egf_request_group_quote'], ['egf_prepare_flight_offer', 'egf_send_flight_offer']]) {
+  for (const [prepare, write] of [['egf_prepare_group_quote', 'egf_request_group_quote']]) {
     const p = allTools.find(t => t.name === prepare)
     const w = allTools.find(t => t.name === write)
     assert.equal(p.annotations.readOnlyHint, true, prepare)
@@ -233,4 +233,16 @@ test('a forged offer_id cannot put its own link in front of the traveller', asyn
 test('every listed tool repeats its title in annotations, where the directory reads it', async () => {
   for (const tool of (await rpc('tools/list')).result.tools)
     assert.equal(tool.annotations.title, tool.title, tool.name)
+})
+
+test('no tool emails an address the caller supplies, other than the group enquiry', async () => {
+  const listed = (await rpc('tools/list')).result.tools.map(t => t.name)
+  assert.deepEqual(listed.filter(n => /send|email|offer_email|flight_offer/.test(n)), [])
+  const { result, error } = await rpc('tools/call', { name: 'send_flight_offer', arguments: {} })
+  assert.ok(error ?? result.isError)
+})
+
+test('server instructions describe the tools and steer nothing', async () => {
+  const { instructions } = (await rpc('initialize', { protocolVersion: '2025-11-25' })).result
+  assert.doesNotMatch(instructions, /\b(?:quote (?:those|these)|rather than|use egf_|you should|always|never|make sure|ask the user)\b/i)
 })

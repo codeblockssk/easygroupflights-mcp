@@ -25,7 +25,7 @@ export function snakeKeys(args: Record<string, unknown>) {
   return out
 }
 
-const SERVER_INFO = { name: 'easygroupflights', version: '2.0.0' }
+const SERVER_INFO = { name: 'easygroupflights', version: '2.1.0' }
 
 // Newest first. We answer in the client's version when we speak it, which is
 // what the spec asks for, and fall back to our newest when we do not.
@@ -44,19 +44,25 @@ function failure(id: Request['id'], code: number, message: string) {
 }
 
 /**
+ * What the server offers, stated as facts. Instructions are read by the model,
+ * and the directory requires them to describe the tools rather than steer how
+ * the assistant answers — so no imperatives here.
+ *
  * The tool list shrinks when the fare service is unconfigured, and instructions
- * that name a withheld tool send the model somewhere it cannot go.
+ * that name a withheld tool describe something that is not there.
  */
 function instructionsFor(tools: Tool[]) {
-  const base = 'easygroupflights.com books group air travel. Parties of 10 or more get a negotiated '
-    + 'group fare, which no public booking engine can price: egf_prepare_group_quote checks the brief, '
-    + 'and egf_request_group_quote sends it to a human agent once the user has confirmed the summary.'
+  const base = 'easygroupflights.com books group air travel. A party of 10 or more seated travellers '
+    + 'gets a negotiated group fare, which has no online price. egf_prepare_group_quote checks a group '
+    + 'brief and returns it with a confirmation token; egf_request_group_quote sends a confirmed brief to '
+    + 'the group desk, which replies by email with a quote.'
   const small = tools.some(t => t.name === 'egf_search_flights')
-    ? `${base} Smaller parties are ordinary tickets: egf_search_flights finds them, egf_get_offer gives `
-    + 'one fare\'s booking link, and egf_prepare_flight_offer then egf_send_flight_offer email it as an offer.'
-    : `${base} This server does not price smaller parties; send those to https://easygroupflights.com.`
-  return `${small} The guides and published studies are available as resources — quote those rather than `
-    + 'figures from memory. Prompts such as school-trip and wedding-guests walk the user through a complete brief.'
+    ? `${base} For 1 to 9 travellers, egf_search_flights returns live public fares and egf_get_offer `
+    + 'returns one fare\'s booking link.'
+    : `${base} Fares for 1 to 9 travellers are not available on this server; they are bookable at https://easygroupflights.com.`
+  return `${small} The operator's guides and published studies are available as resources, each with `
+    + 'its public URL as the source. Prompts cover five trip types: school-trip, wedding-guests, sports-team, '
+    + 'company-offsite and pilgrimage.'
 }
 
 async function handleMessage(message: Request, tools: Tool[], env: Env, context: CallContext) {

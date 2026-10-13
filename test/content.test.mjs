@@ -23,7 +23,7 @@ test('a WhatsApp number becomes a wa.me link of digits only', () => {
 test('initialize advertises tools, resources and prompts', async () => {
   const { result } = await rpc('initialize', { protocolVersion: '2025-06-18' })
   assert.deepEqual(Object.keys(result.capabilities).sort(), ['prompts', 'resources', 'tools'])
-  assert.equal(result.serverInfo.version, '2.0.0')
+  assert.equal(result.serverInfo.version, '2.1.0')
 })
 
 test('every prompt is listed with the market argument', () => {

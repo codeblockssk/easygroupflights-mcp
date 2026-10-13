@@ -59,7 +59,7 @@ export const getOffer: Tool = {
     if (!offer.details || offer.issued === undefined)
       throw new ToolError('That offer_id comes from an older search that did not carry its details. Search again for current fares.')
     if (!offer.link)
-      throw new ToolError('The fare service gave no booking link for this fare. Choose another, or ask for it to be emailed as an offer.')
+      throw new ToolError('The fare service gave no booking link for this fare. Another fare from the same search may have one.')
 
     const details = offer.details
     const currency = env.FARE_CURRENCY ?? 'EUR'

@@ -92,7 +92,7 @@ export const getServiceInfo: Tool = {
       '  Negotiated fares with 500+ airlines worldwide.',
       '',
       'TALK TO A PERSON',
-      '  Offer these when the user would rather speak to someone, or wants to follow up a quote.',
+      '  Human contacts for this market, for speaking to someone or following up a quote.',
       `  Website    https://${domain}`,
       `  Email      ${contact.email}`,
       `  Phone      ${contact.phone}`,

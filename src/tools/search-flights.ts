@@ -171,7 +171,7 @@ export const searchFlights: Tool = {
     const footer = [
       researched ? 'The earlier search was no longer held here, so this page comes from a fresh one; fares may have moved.' : '',
       next ? `Showing ${offset + 1}–${offset + page.length} of ${search.flights.length}. Pass cursor "${next}" for more.` : '',
-      'Each offer_id lasts 30 minutes. egf_get_offer gives a fare\'s booking link; egf_prepare_flight_offer emails it as a formal offer.',
+      'Each offer_id lasts 30 minutes; egf_get_offer returns its booking link.',
     ].filter(Boolean)
 
     return {
@@ -217,7 +217,7 @@ function stops(count: unknown) {
  * The upstream returns a list of JSON strings carrying every field it knows.
  * Passed through raw that is thousands of characters of escaped JSON per search,
  * most of it noise, so it is rendered down to what a traveller is choosing
- * between, with one offer_id standing for the ids egf_send_flight_offer needs.
+ * between, with one offer_id standing for the fare.
  */
 function parse(raw: string): any[] | null {
   try {

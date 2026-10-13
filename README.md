@@ -29,10 +29,8 @@ occupy a seat and don't count.
 | `egf_request_group_quote` | Sends a prepared brief to a group specialist. Takes only the token. Returns a confirmation, not a price. |
 | `egf_search_flights` | 9 or fewer. Live fares with carriers and stops, each with an `offer_id`. |
 | `egf_get_offer` | One fare by `offer_id`: price, flights, a booking link and `valid_until`. |
-| `egf_prepare_flight_offer` | Shows the offer email that would be sent, with a confirmation token. Sends nothing. |
-| `egf_send_flight_offer` | Emails a prepared offer to the traveller. Takes only the token. |
 
-The four fare tools are withheld from `tools/list` unless `PELIKAN_MCP_URL` is set — an
+The two fare tools are withheld from `tools/list` unless `PELIKAN_MCP_URL` is set — an
 advertised tool that cannot run is worse than one that isn't there.
 
 `egf_get_service_info` ends with each market's human contacts — website, email,
@@ -41,17 +39,17 @@ phone and WhatsApp — so an agent can hand a user to a person.
 Every tool:
 
 - sets all four annotations (`readOnlyHint`, `destructiveHint`,
-  `idempotentHint`, `openWorldHint`) explicitly. Only the two that send
-  something are writes, and none is destructive.
+  `idempotentHint`, `openWorldHint`) explicitly. Only
+  `egf_request_group_quote` is a write, and nothing is destructive.
 - declares an `outputSchema` and returns `structuredContent` alongside the text.
 - takes snake_case inputs.
 
-Writes come in pairs, because not every client asks the user before a write.
+The write comes as a pair, because not every client asks the user before a write.
 The prepare tool returns the summary and a `confirmation_token`, which is
 signed with `CONFIRM_SECRET` and valid for 15 minutes. The write takes only
 that token, so it cannot send anything the summary did not show.
 
-Both writes accept an optional `idempotency_key`. Without one, the token
+It accepts an optional `idempotency_key`. Without one, the token
 itself is the key, so a prepared write is carried out at most once. Keys are
 kept for 24 hours, per Cloudflare data centre.
 
@@ -66,8 +64,15 @@ Every tool call answers within 28 seconds.
 
 `egf_search_flights` pages with `limit` (default 10, at most 20) and `cursor`.
 Each fare carries one opaque `offer_id`, valid for 30 minutes. It is all
-`egf_get_offer` and `egf_prepare_flight_offer` need. Search results carry no
+`egf_get_offer` needs. Search results carry no
 booking links, and no session or trip ids.
+
+### Removed in 2.1
+
+`egf_prepare_flight_offer` and `egf_send_flight_offer` (1.x `send_flight_offer`)
+are gone. They passed through the fare service's agent-facing offer email,
+which sent a branded email, with the caller's own text, to any address. The
+directory review flagged that; `egf_get_offer` returns the booking link instead.
 
 ### Upgrading from 1.x
 
@@ -78,8 +83,6 @@ Most of what worked in 1.x still does:
   listed.
 - camelCase arguments (`departureDate`, `fareId`, …) are read as their
   snake_case names.
-- `egf_prepare_flight_offer` still takes the four separate ids a 1.x search
-  printed.
 - A 1.x one-step write is refused, with a message naming the prepare tool to
   call first.
 

@@ -12,8 +12,6 @@ const WHEN: Record<string, string> = {
   egf_request_group_quote: 'Sends the confirmed brief. A specialist replies by email with a written quote.',
   egf_search_flights: 'Nine or fewer. Live, bookable fares with prices, carriers and stops.',
   egf_get_offer: 'One of those fares: the price, the flights and a booking link.',
-  egf_prepare_flight_offer: 'Shows the offer email before anything is sent.',
-  egf_send_flight_offer: 'Emails that fare as a formal offer, once the traveller confirms.',
   egf_get_service_info: 'How group fares work, the thresholds, and how to reach a person.',
 }
 
@@ -106,7 +104,7 @@ export function homepage(env: Env, origin: string) {
   <ul class="prompts">${prompts}</ul>
 
   <h2>Resources an agent can cite</h2>
-  <p class="sub">The guide pages for all three markets, in English, Polish and German, and the published EGF Data Desk studies, each served as markdown under its public URL. Quote these rather than figures from memory.</p>
+  <p class="sub">The guide pages for all three markets, in English, Polish and German, and the published EGF Data Desk studies, each served as markdown under its public URL, so a figure an agent cites links back to its source.</p>
 
   <footer>
     A service of <a href="${env.SITE_URL}">easygroupflights.com</a>, grupoweloty.pl and gruppenfluege.at — IATA-accredited group air travel.
